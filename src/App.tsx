@@ -1,10 +1,14 @@
 import { useEffect, useReducer } from "react";
 import Header from "./components/Header";
 import Main from "./components/Main";
+import Loader from "./components/Loader";
+import ErrorComponent from "./components/ErrorComponent";
+import StartScreen from "./components/StartScreen";
+import Question from "./components/Question";
 
 type Question = {
   question: string;
-  options: [];
+  options: string[];
   correction: number;
   points: number;
 };
@@ -16,7 +20,7 @@ type State = {
   status: Status;
 };
 
-type Action =
+export type Action =
   | { type: "dataReceived"; payload: Question[] }
   | { type: "dataFailed" }
   | { type: "start" }
@@ -40,6 +44,11 @@ function reducer(state: State, action: Action): State {
         ...state,
         status: "error",
       };
+    case "start":
+      return {
+        ...state,
+        status: "active",
+      };
 
     default:
       throw new Error("No type with this state");
@@ -47,7 +56,7 @@ function reducer(state: State, action: Action): State {
 }
 
 function App() {
-  const [state, dispatch] = useReducer(reducer, initialState);
+  const [{ questions, status }, dispatch] = useReducer(reducer, initialState);
 
   useEffect(() => {
     fetch("http://localhost:8000/questions")
@@ -55,15 +64,19 @@ function App() {
       .then(data =>
         dispatch({ type: "dataReceived", payload: data as Question[] })
       )
-      .catch(err => dispatch({ type: "dataFailed" }));
+      .catch(() => dispatch({ type: "dataFailed" }));
   }, []);
 
   return (
     <div className="app">
       <Header />
       <Main>
-        <p>1/15</p>
-        <p>Question?</p>
+        {status === "loading" && <Loader />}
+        {status === "error" && <ErrorComponent />}
+        {status === "ready" && (
+          <StartScreen dispatch={dispatch} numQuestions={questions.length} />
+        )}
+        {status === "active" && <Question />}
       </Main>
     </div>
   );
