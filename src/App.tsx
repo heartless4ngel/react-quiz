@@ -6,22 +6,23 @@ import ErrorComponent from "./components/ErrorComponent";
 import StartScreen from "./components/StartScreen";
 import Question from "./components/Question";
 
-type Question = {
+export type QuestionType = {
   question: string;
   options: string[];
-  correction: number;
+  correctOption: number;
   points: number;
 };
 
 type Status = "loading" | "error" | "ready" | "active" | "finished";
 
 type State = {
-  questions: Question[];
+  questions: QuestionType[];
   status: Status;
+  index: number;
 };
 
 export type Action =
-  | { type: "dataReceived"; payload: Question[] }
+  | { type: "dataReceived"; payload: QuestionType[] }
   | { type: "dataFailed" }
   | { type: "start" }
   | { type: "finish" };
@@ -29,6 +30,7 @@ export type Action =
 const initialState: State = {
   questions: [],
   status: "loading",
+  index: 0,
 };
 
 function reducer(state: State, action: Action): State {
@@ -56,13 +58,16 @@ function reducer(state: State, action: Action): State {
 }
 
 function App() {
-  const [{ questions, status }, dispatch] = useReducer(reducer, initialState);
+  const [{ questions, status, index }, dispatch] = useReducer(
+    reducer,
+    initialState
+  );
 
   useEffect(() => {
     fetch("http://localhost:8000/questions")
       .then(res => res.json())
       .then(data =>
-        dispatch({ type: "dataReceived", payload: data as Question[] })
+        dispatch({ type: "dataReceived", payload: data as QuestionType[] })
       )
       .catch(() => dispatch({ type: "dataFailed" }));
   }, []);
@@ -76,7 +81,7 @@ function App() {
         {status === "ready" && (
           <StartScreen dispatch={dispatch} numQuestions={questions.length} />
         )}
-        {status === "active" && <Question />}
+        {status === "active" && <Question question={questions[index]} />}
       </Main>
     </div>
   );
