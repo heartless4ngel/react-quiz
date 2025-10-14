@@ -19,18 +19,23 @@ type State = {
   questions: QuestionType[];
   status: Status;
   index: number;
+  answer: number | null;
+  points: number;
 };
 
 export type Action =
   | { type: "dataReceived"; payload: QuestionType[] }
   | { type: "dataFailed" }
   | { type: "start" }
-  | { type: "finish" };
+  | { type: "finish" }
+  | { type: "newAnswer"; payload: number };
 
 const initialState: State = {
   questions: [],
   status: "loading",
   index: 0,
+  answer: null,
+  points: 0,
 };
 
 function reducer(state: State, action: Action): State {
@@ -51,14 +56,22 @@ function reducer(state: State, action: Action): State {
         ...state,
         status: "active",
       };
-
+    case "newAnswer":
+      return {
+        ...state,
+        answer: action.payload,
+        points:
+          action.payload === state.questions[state.index].correctOption
+            ? state.points + state.questions[state.index].points
+            : 0,
+      };
     default:
       throw new Error("No type with this state");
   }
 }
 
 function App() {
-  const [{ questions, status, index }, dispatch] = useReducer(
+  const [{ questions, status, index, answer }, dispatch] = useReducer(
     reducer,
     initialState
   );
@@ -81,7 +94,13 @@ function App() {
         {status === "ready" && (
           <StartScreen dispatch={dispatch} numQuestions={questions.length} />
         )}
-        {status === "active" && <Question question={questions[index]} />}
+        {status === "active" && (
+          <Question
+            question={questions[index]}
+            dispatch={dispatch}
+            answer={answer}
+          />
+        )}
       </Main>
     </div>
   );
