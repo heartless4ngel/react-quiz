@@ -6,6 +6,8 @@ import ErrorComponent from "./components/ErrorComponent";
 import StartScreen from "./components/StartScreen";
 import Question from "./components/Question";
 import NextButton from "./components/NextButton";
+import ProgressBar from "./components/ProgressBar";
+import FinishScreen from "./components/FinishScreen";
 
 export type QuestionType = {
   question: string;
@@ -22,6 +24,7 @@ type State = {
   index: number;
   answer: number | null;
   points: number;
+  highscore: number;
 };
 
 export type Action =
@@ -30,6 +33,7 @@ export type Action =
   | { type: "start" }
   | { type: "finish" }
   | { type: "nextQuestion" }
+  | { type: "reset" }
   | { type: "newAnswer"; payload: number };
 
 const initialState: State = {
@@ -38,6 +42,7 @@ const initialState: State = {
   index: 0,
   answer: null,
   points: 0,
+  highscore: 0,
 };
 
 function reducer(state: State, action: Action): State {
@@ -65,7 +70,7 @@ function reducer(state: State, action: Action): State {
         points:
           action.payload === state.questions[state.index].correctOption
             ? state.points + state.questions[state.index].points
-            : 0,
+            : state.points,
       };
     case "nextQuestion":
       return {
@@ -73,25 +78,44 @@ function reducer(state: State, action: Action): State {
         index: state.index + 1,
         answer: null,
       };
+    case "finish":
+      return {
+        ...state,
+        status: "finished",
+        highscore:
+          state.points > state.highscore ? state.points : state.highscore,
+      };
+    case "reset":
+      return {
+        ...initialState,
+        questions: state.questions,
+        status: "ready",
+        highscore: state.highscore,
+      };
     default:
       throw new Error("No type with this state");
   }
 }
 
 function App() {
-  const [{ questions, status, index, answer }, dispatch] = useReducer(
-    reducer,
-    initialState
+  const [{ questions, status, index, answer, points, highscore }, dispatch] =
+    useReducer(reducer, initialState);
+
+  const maxPoints = questions.reduce(
+    (acc, currValue) => acc + currValue.points,
+    0
   );
 
   useEffect(() => {
-    fetch("http://localhost:8000/questions")
-      .then(res => res.json())
-      .then(data =>
-        dispatch({ type: "dataReceived", payload: data as QuestionType[] })
-      )
-      .catch(() => dispatch({ type: "dataFailed" }));
-  }, []);
+    if (status === "loading") {
+      fetch("http://localhost:8000/questions")
+        .then(res => res.json())
+        .then(data =>
+          dispatch({ type: "dataReceived", payload: data as QuestionType[] })
+        )
+        .catch(() => dispatch({ type: "dataFailed" }));
+    }
+  }, [status]);
 
   return (
     <div className="app">
@@ -104,13 +128,33 @@ function App() {
         )}
         {status === "active" && (
           <>
+            <ProgressBar
+              maxPoints={maxPoints}
+              index={index}
+              points={points}
+              numberQuestions={questions.length}
+              answer={answer}
+            />
             <Question
               question={questions[index]}
               dispatch={dispatch}
               answer={answer}
             />
-            <NextButton dispatch={dispatch} answer={answer} />
+            <NextButton
+              index={index}
+              numQuestions={questions.length}
+              dispatch={dispatch}
+              answer={answer}
+            />
           </>
+        )}
+        {status === "finished" && (
+          <FinishScreen
+            dispatch={dispatch}
+            highscore={highscore}
+            maxPossiblePoints={maxPoints}
+            points={points}
+          />
         )}
       </Main>
     </div>
