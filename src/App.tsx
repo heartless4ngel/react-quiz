@@ -5,6 +5,7 @@ import Loader from "./components/Loader";
 import ErrorComponent from "./components/ErrorComponent";
 import StartScreen from "./components/StartScreen";
 import Question from "./components/Question";
+import NextButton from "./components/NextButton";
 
 export type QuestionType = {
   question: string;
@@ -28,6 +29,7 @@ export type Action =
   | { type: "dataFailed" }
   | { type: "start" }
   | { type: "finish" }
+  | { type: "nextQuestion" }
   | { type: "newAnswer"; payload: number };
 
 const initialState: State = {
@@ -65,6 +67,12 @@ function reducer(state: State, action: Action): State {
             ? state.points + state.questions[state.index].points
             : 0,
       };
+    case "nextQuestion":
+      return {
+        ...state,
+        index: state.index + 1,
+        answer: null,
+      };
     default:
       throw new Error("No type with this state");
   }
@@ -95,11 +103,14 @@ function App() {
           <StartScreen dispatch={dispatch} numQuestions={questions.length} />
         )}
         {status === "active" && (
-          <Question
-            question={questions[index]}
-            dispatch={dispatch}
-            answer={answer}
-          />
+          <>
+            <Question
+              question={questions[index]}
+              dispatch={dispatch}
+              answer={answer}
+            />
+            <NextButton dispatch={dispatch} answer={answer} />
+          </>
         )}
       </Main>
     </div>
